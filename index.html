@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hot Wheels Cyber Race - Retro Game</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Orbitron:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #0d0d0d;
+            --text-color: #00ff00; /* Matrix Green */
+            --accent-color: #00aaff; /* Cyber Blue */
+            --road-dark: #222;
+            --road-light: #333;
+            --shoulder-color: #8800ff; /* Purple Neon */
+            --stripe-color: #ffff00; /* Yellow Neon */
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+            text-shadow: 0 0 5px var(--text-color);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-color);
+            text-shadow: 0 0 15px var(--accent-color);
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #game-container {
+            width: 800px; /* Largura do jogo */
+            height: 450px; /* Altura do jogo */
+            background-color: #000;
+            border: 5px solid var(--border-color);
+            box-shadow: 0 0 30px rgba(0,255,0,0.8), inset 0 0 15px rgba(0,255,0,0.5);
+            position: relative;
+            overflow: hidden; /* Garante que os elementos não saiam da tela */
+            border-radius: 10px;
+        }
+
+        #road {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            perspective: 500px; /* Para a ilusão de profundidade */
+        }
+
+        .road-segment {
+            position: absolute;
+            width: 100%;
+            height: 50px; /* Altura de cada segmento da estrada */
+            transform-origin: bottom center;
+            transform-style: preserve-3d;
+        }
+
+        .road-segment.dark { background-color: var(--road-dark); }
+        .road-segment.light { background-color: var(--road-light); }
+
+        .road-shoulder-left, .road-shoulder-right {
+            position: absolute;
+            width: 15%; /* Largura da faixa lateral */
+            height: 100%;
+            background-color: var(--shoulder-color);
+            box-shadow: 0 0 10px var(--shoulder-color);
+        }
+        .road-shoulder-left { left: 0; }
+        .road-shoulder-right { right: 0; }
+
+        .road-stripe {
+            position: absolute;
+            width: 5px; /* Largura da faixa central */
+            height: 100%;
+            background-color: var(--stripe-color);
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 8px var(--stripe-color);
+        }
+
+        #player-car {
+            position: absolute;
+            bottom: 20px; /* Posição inicial do carro */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 60px;
+            background: url('https://i.imgur.com/kP1G0hP.png') no-repeat center center / contain; /* Placeholder de carro cyberpunk */
+            z-index: 100;
+            transition: left 0.1s ease-out; /* Suaviza o movimento lateral */
+        }
+        /* Para o caso da imagem não carregar, ou para testar: */
+        #player-car.placeholder {
+            background-color: #ff00ff; /* Pink Cyberpunk */
+            border: 2px solid var(--text-color);
+            border-radius: 10px;
+            box-shadow: 0 0 15px #ff00ff, inset 0 0 5px var(--text-color);
+        }
+
+
+        .obstacle {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #ff0000; /* Obstáculo vermelho */
+            border: 2px solid #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 15px #ff0000;
+            z-index: 90;
+            transform-origin: bottom center;
+        }
+
+        #game-info {
+            margin-top: 20px;
+            display: flex;
+            gap: 40px;
+            font-size: 1.2em;
+            color: var(--text-color);
+            text-shadow: 0 0 8px var(--text-color);
+            background-color: #1a1a1a;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 0 15px rgba(0,170,255,0.4);
+        }
+
+        #controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        #controls p {
+            font-size: 1em;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        .action-button {
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            text-decoration: none;
+            padding: 15px 30px;
+            margin: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            transition: all 0.3s ease-in-out;
+            text-align: center;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1em;
+            letter-spacing: 1px;
+            box-shadow: 0 0 5px rgba(0,255,0,0.5);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-button:hover {
+            background-color: var(--button-hover-bg);
+            color: var(--accent-color);
+            border-color: var(--accent-color);
+            text-shadow: 0 0 8px var(--accent-color);
+            box-shadow: 0 0 15px rgba(0,255,0,0.8), 0 0 20px var(--accent-color);
+            transform: translateY(-3px);
+        }
+
+        #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            text-align: center;
+            z-index: 200;
+            display: none; /* Inicia oculto */
+        }
+
+        #game-over-screen button {
+            margin-top: 30px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+            border: 2px solid var(--text-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            box-shadow: 0 0 15px var(--accent-color);
+            transition: all 0.3s ease;
+        }
+
+        #game-over-screen button:hover {
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 25px var(--text-color);
+        }
+
+        @media (max-width: 850px) {
+            #game-container {
+                width: 100%;
+                height: 350px;
+                margin-top: 10px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            #game-info {
+                font-size: 1em;
+                gap: 20px;
+            }
+        }
+
+        @media (max-width: 500px) {
+            h1 {
+                font-size: 1.4em;
+            }
+            #game-info {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            #player-car {
+                width: 60px;
+                height: 45px;
+            }
+            .obstacle {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Hot Wheels Cyber Race // <span class="highlight-green">2025</span></h1>
+
+    <div id="game-container">
+        <div id="road"></div>
+        <div id="player-car" class="placeholder"></div>
+        <div id="game-over-screen">
+            <h2>GAME OVER</h2>
+            <p>Sua pontuação: <span id="final-score">0</span></p>
+            <button onclick="restartGame()">REINICIAR</button>
+        </div>
+    </div>
+
+    <div id="game-info">
+        <div>Velocidade: <span id="speed-display">0 KM/H</span></div>
+        <div>Pontuação: <span id="score-display">0</span></div>
+        <div>Tempo: <span id="time-display">00:00</span></div>
+    </div>
+
+    <div id="controls">
+        <p>Controles: Setas <span class="highlight-blue">←</span> e <span class="highlight-blue">→</span> para mover, <span class="highlight-blue">↑</span> para acelerar, <span class="highlight-blue">↓</span> para frear.</p>
+        <button class="action-button" onclick="startGame()">INICIAR CORRIDA</button>
+    </div>
+
+    <script>
+        const gameContainer = document.getElementById('game-container');
+        const road = document.getElementById('road');
+        const playerCar = document.getElementById('player-car');
+        const speedDisplay = document.getElementById('speed-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const timeDisplay = document.getElementById('time-display');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreDisplay = document.getElementById('final-score');
+
+        // Game state variables
+        let gameRunning = false;
+        let playerX = 50; // Posição horizontal do carro (0-100%)
+        let speed = 0; // Velocidade atual da pista
+        let score = 0;
+        let timeElapsed = 0;
+        let gameLoopInterval;
+        let obstacleSpawnInterval;
+        let timerInterval;
+
+        const maxSpeed = 10; // Velocidade máxima da pista (pixels/frame)
+        const acceleration = 0.05;
+        const deceleration = 0.1;
+        const obstacleSpeedMultiplier = 0.8; // Obstáculos movem mais devagar que a pista
+        const roadSegmentsCount = 10; // Número de segmentos da estrada para o efeito de rolagem
+        let roadSegments = [];
+        const roadSegmentHeight = gameContainer.offsetHeight / roadSegmentsCount;
+
+        const obstacles = [];
+        const obstacleSpawnRate = 1500; // Tempo em ms para spawnar um novo obstáculo
+
+        // Initialize road segments
+        function createRoadSegments() {
+            road.innerHTML = ''; // Limpa segmentos existentes
+            roadSegments = [];
+            for (let i = 0; i < roadSegmentsCount; i++) {
+                const segment = document.createElement('div');
+                segment.classList.add('road-segment');
+                segment.classList.add(i % 2 === 0 ? 'dark' : 'light');
+                segment.style.height = `${roadSegmentHeight}px`;
+                segment.style.top = `${i * roadSegmentHeight}px`;
+
+                const shoulderLeft = document.createElement('div');
+                shoulderLeft.classList.add('road-shoulder-left');
+                segment.appendChild(shoulderLeft);
+
+                const shoulderRight = document.createElement('div');
+                shoulderRight.classList.add('road-shoulder-right');
+                segment.appendChild(shoulderRight);
+
+                if (i % 2 !== 0) { // Adiciona faixa central apenas em segmentos claros
+                    const stripe = document.createElement('div');
+                    stripe.classList.add('road-stripe');
+                    segment.appendChild(stripe);
+                }
+
+                roadSegments.push({
+                    element: segment,
+                    originalTop: i * roadSegmentHeight
+                });
+                road.appendChild(segment);
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            // Move road segments
+            roadSegments.forEach(segment => {
+                segment.originalTop += speed;
+                if (segment.originalTop >= gameContainer.offsetHeight) {
+                    segment.originalTop -= gameContainer.offsetHeight + roadSegmentHeight; // Reinicia no topo
+                }
+                segment.element.style.top = `${segment.originalTop}px`;
+
+                // Aplica perspectiva para simular profundidade
+                const relativeTop = segment.originalTop / gameContainer.offsetHeight;
+                const scale = 1 - (relativeTop * 0.7); // Mais longe, menor escala
+                const opacity = 1 - (relativeTop * 0.5); // Mais longe, menos opaco
+                segment.element.style.transform = `scaleY(${scale}) perspective(100px) translateY(${relativeTop * 100}%)`;
+                segment.element.style.opacity = opacity;
+            });
+
+            // Move obstacles
+            obstacles.forEach((obstacle, index) => {
+                obstacle.y += speed * obstacleSpeedMultiplier; // Obstáculos movem mais devagar
+                obstacle.element.style.top = `${obstacle.y}px`;
+
+                // Aplica perspectiva aos obstáculos
+                const relativeTop = obstacle.y / gameContainer.offsetHeight;
+                const scale = 1 - (relativeTop * 0.7);
+                const opacity = 1 - (relativeTop * 0.5);
+                obstacle.element.style.transform = `scale(${scale})`;
+                obstacle.element.style.opacity = opacity;
+
+
+                // Remove obstáculos fora da tela
+                if (obstacle.y > gameContainer.offsetHeight) {
+                    obstacle.element.remove();
+                    obstacles.splice(index, 1);
+                    score += 10; // Pontua por passar um obstáculo
+                }
+
+                // Check for collision
+                const carRect = playerCar.getBoundingClientRect();
+                const obsRect = obstacle.element.getBoundingClientRect();
+
+                // Colisão mais precisa, considerando a largura da pista
+                if (
+                    carRect.bottom > obsRect.top &&
+                    carRect.top < obsRect.bottom &&
+                    carRect.right > obsRect.left &&
+                    carRect.left < obsRect.right
+                ) {
+                    gameOver();
+                }
+            });
+
+            // Update displays
+            speedDisplay.textContent = `${Math.floor(speed * 10)} KM/H`; // Escala para um valor mais realista
+            scoreDisplay.textContent = score;
+        }
+
+        function spawnObstacle() {
+            if (!gameRunning) return;
+
+            const obstacle = document.createElement('div');
+            obstacle.classList.add('obstacle');
+            obstacle.style.left = `${Math.random() * (gameContainer.offsetWidth - 150) + 75}px`; // Garante que fique na pista
+            obstacle.style.top = `-50px`; // Começa acima da tela
+            road.appendChild(obstacle);
+
+            obstacles.push({
+                element: obstacle,
+                y: -50,
+                x: parseInt(obstacle.style.left) // Posição X para colisão
+            });
+        }
+
+        // Game controls
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (!gameRunning && (e.key === 'ArrowUp' || e.key === ' ')) {
+                 startGame(); // Inicia o jogo ao apertar aceleração
+            }
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        function updatePlayerMovement() {
+            if (!gameRunning) return;
+
+            if (keys['ArrowLeft']) {
+                playerX -= 2;
+            }
+            if (keys['ArrowRight']) {
+                playerX += 2;
+            }
+            if (keys['ArrowUp']) {
+                speed = Math.min(maxSpeed, speed + acceleration);
+            } else if (keys['ArrowDown']) {
+                speed = Math.max(0, speed - deceleration);
+            } else {
+                // Reduz velocidade automaticamente quando não está acelerando
+                speed = Math.max(0, speed - (deceleration / 2));
+            }
+
+            // Limitar o movimento do carro dentro da tela
+            playerX = Math.max(0, Math.min(100, playerX));
+            playerCar.style.left = `${playerX}%`;
+        }
+
+        // Game states
+        function startGame() {
+            if (gameRunning) return;
+
+            gameRunning = true;
+            gameOverScreen.style.display = 'none';
+            score = 0;
+            timeElapsed = 0;
+            speed = 0;
+            playerX = 50;
+            playerCar.style.left = '50%';
+            playerCar.classList.remove('placeholder'); // Remove a classe de placeholder se a imagem carregar
+            
+            // Limpa obstáculos antigos
+            obstacles.forEach(obs => obs.element.remove());
+            obstacles.length = 0;
+
+            createRoadSegments(); // Recria os segmentos para garantir posicionamento correto
+
+            gameLoopInterval = setInterval(() => {
+                updatePlayerMovement();
+                gameLoop();
+            }, 1000 / 60); // 60 FPS
+
+            obstacleSpawnInterval = setInterval(spawnObstacle, obstacleSpawnRate);
+
+            timerInterval = setInterval(() => {
+                timeElapsed++;
+                const minutes = Math.floor(timeElapsed / 60).toString().padStart(2, '0');
+                const seconds = (timeElapsed % 60).toString().padStart(2, '0');
+                timeDisplay.textContent = `${minutes}:${seconds}`;
+            }, 1000);
+
+            // Esconde o botão de iniciar corrida
+            document.querySelector('.action-button').style.display = 'none';
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            clearInterval(gameLoopInterval);
+            clearInterval(obstacleSpawnInterval);
+            clearInterval(timerInterval);
+
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'flex';
+            document.querySelector('.action-button').style.display = 'block'; // Mostra o botão de iniciar corrida novamente
+            document.querySelector('.action-button').textContent = 'REINICIAR JOGO';
+        }
+
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            createRoadSegments();
+        });
+
+    </script>
+</body>
+</html>
